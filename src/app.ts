@@ -1,8 +1,10 @@
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, FreeCamera, Color4 } from "@babylonjs/core";
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, FreeCamera, Color4, StandardMaterial, Color3, PointLight, ShadowGenerator, Quaternion, Matrix } from "@babylonjs/core";
 import { AdvancedDynamicTexture, Button, Control } from "@babylonjs/gui";
+import { Environment } from "./environment";
+import { Player } from "./characterController";
 
 enum State { START = 0, GAME = 1, LOSE = 2, CUTSCENE = 3 }
 
@@ -16,6 +18,11 @@ class App {
     private _state: number = 0;
     private _gamescene: Scene;
     private _cutScene: Scene;
+
+    // 游戏状态相关
+    private assets;
+    private _player:Player;
+    private _environment:Environment;
 
     constructor() {
         this._canvas = this._createCanvas();
@@ -43,17 +50,17 @@ class App {
     private _createCanvas(): HTMLCanvasElement {
 
         //Commented out for development
-        document.documentElement.style["overflow"] = "hidden";
-        document.documentElement.style.overflow = "hidden";
-        document.documentElement.style.width = "100%";
-        document.documentElement.style.height = "100%";
-        document.documentElement.style.margin = "0";
-        document.documentElement.style.padding = "0";
-        document.body.style.overflow = "hidden";
-        document.body.style.width = "100%";
-        document.body.style.height = "100%";
-        document.body.style.margin = "0";
-        document.body.style.padding = "0";
+        // document.documentElement.style["overflow"] = "hidden";
+        // document.documentElement.style.overflow = "hidden";
+        // document.documentElement.style.width = "100%";
+        // document.documentElement.style.height = "100%";
+        // document.documentElement.style.margin = "0";
+        // document.documentElement.style.padding = "0";
+        // document.body.style.overflow = "hidden";
+        // document.body.style.width = "100%";
+        // document.body.style.height = "100%";
+        // document.body.style.margin = "0";
+        // document.body.style.padding = "0";
 
         // 创建画布html元素并将其附加到网页
         this._canvas = document.createElement("canvas");
@@ -92,12 +99,12 @@ class App {
             this._engine.resize();
         });
     }
-    private async _goToStart(){
+    private async _goToStart() {
         this._engine.displayLoadingUI();
 
         this._scene.detachControl();
         let scene = new Scene(this._engine);
-        scene.clearColor = new Color4(0,0,0,1);
+        scene.clearColor = new Color4(0, 0, 0, 1);
         let camera = new FreeCamera("camera1", new Vector3(0, 0, 0), scene);
         camera.setTarget(Vector3.Zero());
 
@@ -140,8 +147,8 @@ class App {
         camera.setTarget(Vector3.Zero());
         this._cutScene.clearColor = new Color4(0, 0, 0, 1);
 
-         //--GUI--
-         const cutScene = AdvancedDynamicTexture.CreateFullscreenUI("cutscene");
+        //--GUI--
+        const cutScene = AdvancedDynamicTexture.CreateFullscreenUI("cutscene");
 
         // --进展对话--
         const next = Button.CreateSimpleButton("next", "NEXT");
@@ -168,7 +175,7 @@ class App {
 
         // --在此场景中开始加载和设置游戏--
         var finishedLoading = false;
-        await this._setUpGame().then(res =>{
+        await this._setUpGame().then(res => {
             finishedLoading = true;
         });
     }
@@ -176,17 +183,80 @@ class App {
     private async _setUpGame() {
         let scene = new Scene(this._engine);
         this._gamescene = scene;
-    
+
         // ...装载资产
+        // --创造环境---
+        const environment = new Environment(scene);
+        this._environment = environment; // 应用程序的类变量
+        // 加载环境和角色资源
+        await this._environment.load(); // 环境
+        await this._loadCharacterAssets(scene); // 角色
     }
 
-    private async _goToGame(){
+    private async _loadCharacterAssets(scene){
+
+        async function loadCharacter(){
+           // 碰撞网格
+           const outer = MeshBuilder.CreateBox("outer", { width: 2, depth: 1, height: 3 }, scene);
+           outer.isVisible = false;
+           outer.isPickable = false;
+           outer.checkCollisions = true;
+
+           // 将盒子碰撞器的原点移动到网格的底部（以匹配导入的玩家网格）
+           outer.bakeTransformIntoVertices(Matrix.Translation(0, 1.5, 0))
+
+           // 对于碰撞
+           outer.ellipsoid = new Vector3(1, 1.5, 1);
+           outer.ellipsoidOffset = new Vector3(0, 1.5, 0);
+
+           outer.rotationQuaternion = new Quaternion(0, 1, 0, 0); // 将播放器网格旋转 180，因为我们想看到播放器的背面 
+
+           var box = MeshBuilder.CreateBox("Small1", { width: 0.5, depth: 0.5, height: 0.25, faceColors: [new Color4(0,0,0,1), new Color4(0,0,0,1), new Color4(0,0,0,1), new Color4(0,0,0,1),new Color4(0,0,0,1), new Color4(0,0,0,1)] }, scene);
+           box.position.y = 1.5;
+           box.position.z = 1;
+
+           var body = Mesh.CreateCylinder("body", 3, 2,2,0,0,scene);
+           var bodymtl = new StandardMaterial("red",scene);
+           bodymtl.diffuseColor = new Color3(.8,.5,.5);
+           body.material = bodymtl;
+           body.isPickable = false;
+           body.bakeTransformIntoVertices(Matrix.Translation(0, 1.5, 0)); // 模拟导入网格的原点 
+
+           // 父网格
+           box.parent = body;
+           body.parent = outer;
+
+           return {
+               mesh: outer as Mesh
+           }
+       }
+       return loadCharacter().then(assets=> {
+           this.assets = assets;
+       })
+
+   }
+
+   private async _initializeGameAsync(scene): Promise<void> {
+    // 临时灯光照亮整个场景
+    var light0 = new HemisphericLight("HemiLight", new Vector3(0, 1, 0), scene);
+
+    const light = new PointLight("sparklight", new Vector3(0, 0, 0), scene);
+    light.diffuse = new Color3(0.08627450980392157, 0.10980392156862745, 0.15294117647058825);
+    light.intensity = 35;
+    light.radius = 1;
+
+    const shadowGenerator = new ShadowGenerator(1024, light);
+    shadowGenerator.darkness = 0.4;
+
+    // 创建玩家
+    this._player = new Player(this.assets, scene, shadowGenerator); // 还没有输入，所以我们不需要传递
+}
+
+    private async _goToGame() {
         // --设置场景--
         this._scene.detachControl();
         let scene = this._gamescene;
         scene.clearColor = new Color4(0.01568627450980392, 0.01568627450980392, 0.20392156862745098); // a color that fit the overall color scheme better
-        let camera: ArcRotateCamera = new ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 2, 2, Vector3.Zero(), scene);
-        camera.setTarget(Vector3.Zero());
 
         //--GUI--
         const playerUI = AdvancedDynamicTexture.CreateFullscreenUI("UI");
@@ -209,12 +279,13 @@ class App {
             scene.detachControl(); // 禁用的可观测值
         });
 
-        // 临时场景对象
-        var light1: HemisphericLight = new HemisphericLight("light1", new Vector3(1, 1, 0), scene);
-        var sphere: Mesh = MeshBuilder.CreateSphere("sphere", { diameter: 1 }, scene);
-
+        // 原始文字与背景
+        await this._initializeGameAsync(scene);
+        
+        
         // --当场景完成加载时--
         await scene.whenReadyAsync();
+        scene.getMeshByName("outer").position = new Vector3(0,3,0);
         // 摆脱开始场景，切换到游戏场景并更改状态
         this._scene.dispose();
         this._state = State.GAME;
