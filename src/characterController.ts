@@ -1,4 +1,3 @@
-// import { Scene, Vector3, Ray, TransformNode, Mesh, Color3, Color4, UniversalCamera, Quaternion, AnimationGroup, ExecuteCodeAction, ActionManager, ParticleSystem, Texture, SphereParticleEmitter, Sound, Observable, ShadowGenerator } from "@babylonjs/core";
 import { TransformNode, ShadowGenerator, Scene, Mesh, UniversalCamera, ArcRotateCamera, Vector3, Quaternion, Ray } from "@babylonjs/core";
 // import { PlayerInput } from "./inputController";
 
@@ -51,6 +50,8 @@ export class Player extends TransformNode {
 
         this.mesh = assets.mesh;
         this.mesh.parent = this;
+
+        this.scene.getLightByName("sparklight").parent = this.scene.getTransformNodeByName("Empty");
 
         shadowGenerator.addShadowCaster(assets.mesh); // 玩家网格将投射阴影
 

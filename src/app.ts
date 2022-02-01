@@ -1,7 +1,7 @@
 import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
-import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, FreeCamera, Color4, StandardMaterial, Color3, PointLight, ShadowGenerator, Quaternion, Matrix } from "@babylonjs/core";
+import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, FreeCamera, Color4, StandardMaterial, Color3, PointLight, ShadowGenerator, Quaternion, Matrix, SceneLoader } from "@babylonjs/core";
 import { AdvancedDynamicTexture, Button, Control } from "@babylonjs/gui";
 import { Environment } from "./environment";
 import { Player } from "./characterController";
@@ -181,6 +181,7 @@ class App {
         var finishedLoading = false;
         await this._setUpGame().then(res => {
             finishedLoading = true;
+            this._goToGame();
         });
     }
 
@@ -188,11 +189,14 @@ class App {
         let scene = new Scene(this._engine);
         this._gamescene = scene;
 
+
         // ...装载资产
         // --创造环境---
         const environment = new Environment(scene);
         this._environment = environment; // 应用程序的类变量
+
         // 加载环境和角色资源
+        // 在尝试导入角色网格之前等待环境完全加载并设置好
         await this._environment.load(); // 环境
         await this._loadCharacterAssets(scene); // 角色
     }
@@ -210,29 +214,25 @@ class App {
             outer.bakeTransformIntoVertices(Matrix.Translation(0, 1.5, 0))
 
             // 对于碰撞
-            // outer.ellipsoid = new Vector3(1, 1.5, 1);
-            // outer.ellipsoidOffset = new Vector3(0, 1.5, 0);
+            outer.ellipsoid = new Vector3(1, 1.5, 1);
+            outer.ellipsoidOffset = new Vector3(0, 1.5, 0);
 
             outer.rotationQuaternion = new Quaternion(0, 1, 0, 0); // 将播放器网格旋转 180，因为我们想看到播放器的背面 
 
-            var box = MeshBuilder.CreateBox("Small1", { width: 0.5, depth: 0.5, height: 0.25, faceColors: [new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1)] }, scene);
-            box.position.y = 1.5;
-            box.position.z = 1;
-
-            var body = Mesh.CreateCylinder("body", 3, 2, 2, 0, 0, scene);
-            var bodymtl = new StandardMaterial("red", scene);
-            bodymtl.diffuseColor = new Color3(.8, .5, .5);
-            body.material = bodymtl;
-            body.isPickable = false;
-            body.bakeTransformIntoVertices(Matrix.Translation(0, 1.5, 0)); // 模拟导入网格的原点 
-
-            // 父网格
-            box.parent = body;
-            body.parent = outer;
-
-            return {
-                mesh: outer as Mesh
-            }
+            
+            return SceneLoader.ImportMeshAsync(null, "./models/", "player.glb", scene).then((result) =>{
+                const root = result.meshes[0];
+                // body 是我们实际的玩家网格
+                const body = root;
+                body.parent = outer;
+                body.isPickable = false; // 所以我们的光线投射不会击中我们自己  
+                body.getChildMeshes().forEach(m => {
+                    m.isPickable = false;
+                })
+                return {
+                    mesh: outer as Mesh,
+                }
+            });
         }
         return loadCharacter().then(assets => {
             this.assets = assets;
@@ -293,7 +293,7 @@ class App {
 
         // --当场景完成加载时--
         await scene.whenReadyAsync();
-        scene.getMeshByName("outer").position = new Vector3(0, 3, 0);
+        scene.getMeshByName("outer").position = scene.getTransformNodeByName("startPosition").getAbsolutePosition(); // 将球员移动到起始位置
         // 摆脱开始场景，切换到游戏场景并更改状态
         this._scene.dispose();
         this._state = State.GAME;
