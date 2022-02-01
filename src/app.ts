@@ -285,9 +285,11 @@ class App {
             scene.detachControl(); // 禁用的可观测值
         });
 
+        // - 输入 - 
+        this._input = new PlayerInput(scene); // 检测键盘/移动输入 
+
         // 原始文字与背景
         await this._initializeGameAsync(scene);
-
 
         // --当场景完成加载时--
         await scene.whenReadyAsync();
