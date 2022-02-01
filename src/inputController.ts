@@ -13,6 +13,10 @@ export class PlayerInput {
     public horizontalAxis: number = 0;
     public verticalAxis: number = 0;
 
+    // 短跑和跳跃
+    public dashing: boolean = false;
+    public jumpKeyDown: boolean = false;
+
     constructor(scene: Scene) {
         scene.actionManager = new ActionManager(scene);
 
@@ -33,7 +37,7 @@ export class PlayerInput {
         if (this.inputMap["ArrowUp"]) {
             this.vertical = Scalar.Lerp(this.vertical, 1, 0.2);
             this.verticalAxis = 1;
-    
+
         } else if (this.inputMap["ArrowDown"]) {
             this.vertical = Scalar.Lerp(this.vertical, -1, 0.2);
             this.verticalAxis = -1;
@@ -41,11 +45,11 @@ export class PlayerInput {
             this.vertical = 0;
             this.verticalAxis = 0;
         }
-    
+
         if (this.inputMap["ArrowLeft"]) {
             this.horizontal = Scalar.Lerp(this.horizontal, -1, 0.2);
             this.horizontalAxis = -1;
-    
+
         } else if (this.inputMap["ArrowRight"]) {
             this.horizontal = Scalar.Lerp(this.horizontal, 1, 0.2);
             this.horizontalAxis = 1;
@@ -53,6 +57,19 @@ export class PlayerInput {
         else {
             this.horizontal = 0;
             this.horizontalAxis = 0;
+        }
+        // 短跑
+        if (this.inputMap["Shift"]) {
+            this.dashing = true;
+        } else {
+            this.dashing = false;
+        }
+
+        // 跳跃检查（空格）
+        if (this.inputMap[" "]) {
+            this.jumpKeyDown = true;
+        } else {
+            this.jumpKeyDown = false;
         }
     }
 
