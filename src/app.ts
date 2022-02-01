@@ -5,6 +5,7 @@ import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBu
 import { AdvancedDynamicTexture, Button, Control } from "@babylonjs/gui";
 import { Environment } from "./environment";
 import { Player } from "./characterController";
+import { PlayerInput } from "./inputController";
 
 enum State { START = 0, GAME = 1, LOSE = 2, CUTSCENE = 3 }
 
@@ -14,15 +15,18 @@ class App {
     private _canvas: HTMLCanvasElement;
     private _engine: Engine;
 
+    // 游戏状态相关
+    public assets;
+    private _input: PlayerInput;
+    private _player: Player;
+    private _environment: Environment;
+
+
     // 场景相关
     private _state: number = 0;
     private _gamescene: Scene;
     private _cutScene: Scene;
 
-    // 游戏状态相关
-    private assets;
-    private _player:Player;
-    private _environment:Environment;
 
     constructor() {
         this._canvas = this._createCanvas();
@@ -193,64 +197,66 @@ class App {
         await this._loadCharacterAssets(scene); // 角色
     }
 
-    private async _loadCharacterAssets(scene){
+    private async _loadCharacterAssets(scene) {
 
-        async function loadCharacter(){
-           // 碰撞网格
-           const outer = MeshBuilder.CreateBox("outer", { width: 2, depth: 1, height: 3 }, scene);
-           outer.isVisible = false;
-           outer.isPickable = false;
-           outer.checkCollisions = true;
+        async function loadCharacter() {
+            // 碰撞网格
+            const outer = MeshBuilder.CreateBox("outer", { width: 2, depth: 1, height: 3 }, scene);
+            outer.isVisible = false;
+            outer.isPickable = false;
+            outer.checkCollisions = true;
 
-           // 将盒子碰撞器的原点移动到网格的底部（以匹配导入的玩家网格）
-           outer.bakeTransformIntoVertices(Matrix.Translation(0, 1.5, 0))
+            // 将盒子碰撞器的原点移动到网格的底部（以匹配导入的玩家网格）
+            outer.bakeTransformIntoVertices(Matrix.Translation(0, 1.5, 0))
 
-           // 对于碰撞
-           outer.ellipsoid = new Vector3(1, 1.5, 1);
-           outer.ellipsoidOffset = new Vector3(0, 1.5, 0);
+            // 对于碰撞
+            // outer.ellipsoid = new Vector3(1, 1.5, 1);
+            // outer.ellipsoidOffset = new Vector3(0, 1.5, 0);
 
-           outer.rotationQuaternion = new Quaternion(0, 1, 0, 0); // 将播放器网格旋转 180，因为我们想看到播放器的背面 
+            outer.rotationQuaternion = new Quaternion(0, 1, 0, 0); // 将播放器网格旋转 180，因为我们想看到播放器的背面 
 
-           var box = MeshBuilder.CreateBox("Small1", { width: 0.5, depth: 0.5, height: 0.25, faceColors: [new Color4(0,0,0,1), new Color4(0,0,0,1), new Color4(0,0,0,1), new Color4(0,0,0,1),new Color4(0,0,0,1), new Color4(0,0,0,1)] }, scene);
-           box.position.y = 1.5;
-           box.position.z = 1;
+            var box = MeshBuilder.CreateBox("Small1", { width: 0.5, depth: 0.5, height: 0.25, faceColors: [new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1), new Color4(0, 0, 0, 1)] }, scene);
+            box.position.y = 1.5;
+            box.position.z = 1;
 
-           var body = Mesh.CreateCylinder("body", 3, 2,2,0,0,scene);
-           var bodymtl = new StandardMaterial("red",scene);
-           bodymtl.diffuseColor = new Color3(.8,.5,.5);
-           body.material = bodymtl;
-           body.isPickable = false;
-           body.bakeTransformIntoVertices(Matrix.Translation(0, 1.5, 0)); // 模拟导入网格的原点 
+            var body = Mesh.CreateCylinder("body", 3, 2, 2, 0, 0, scene);
+            var bodymtl = new StandardMaterial("red", scene);
+            bodymtl.diffuseColor = new Color3(.8, .5, .5);
+            body.material = bodymtl;
+            body.isPickable = false;
+            body.bakeTransformIntoVertices(Matrix.Translation(0, 1.5, 0)); // 模拟导入网格的原点 
 
-           // 父网格
-           box.parent = body;
-           body.parent = outer;
+            // 父网格
+            box.parent = body;
+            body.parent = outer;
 
-           return {
-               mesh: outer as Mesh
-           }
-       }
-       return loadCharacter().then(assets=> {
-           this.assets = assets;
-       })
+            return {
+                mesh: outer as Mesh
+            }
+        }
+        return loadCharacter().then(assets => {
+            this.assets = assets;
+        })
 
-   }
+    }
 
-   private async _initializeGameAsync(scene): Promise<void> {
-    // 临时灯光照亮整个场景
-    var light0 = new HemisphericLight("HemiLight", new Vector3(0, 1, 0), scene);
+    private async _initializeGameAsync(scene): Promise<void> {
+        // 临时灯光照亮整个场景
+        var light0 = new HemisphericLight("HemiLight", new Vector3(0, 1, 0), scene);
 
-    const light = new PointLight("sparklight", new Vector3(0, 0, 0), scene);
-    light.diffuse = new Color3(0.08627450980392157, 0.10980392156862745, 0.15294117647058825);
-    light.intensity = 35;
-    light.radius = 1;
+        const light = new PointLight("sparklight", new Vector3(0, 0, 0), scene);
+        light.diffuse = new Color3(0.08627450980392157, 0.10980392156862745, 0.15294117647058825);
+        light.intensity = 35;
+        light.radius = 1;
 
-    const shadowGenerator = new ShadowGenerator(1024, light);
-    shadowGenerator.darkness = 0.4;
+        const shadowGenerator = new ShadowGenerator(1024, light);
+        shadowGenerator.darkness = 0.4;
 
-    // 创建玩家
-    this._player = new Player(this.assets, scene, shadowGenerator); // 还没有输入，所以我们不需要传递
-}
+        // 创建玩家
+        this._player = new Player(this.assets, scene, shadowGenerator, this._input); // 还没有输入，所以我们不需要传递
+        const camera = this._player.activatePlayerCamera();
+
+    }
 
     private async _goToGame() {
         // --设置场景--
@@ -281,11 +287,11 @@ class App {
 
         // 原始文字与背景
         await this._initializeGameAsync(scene);
-        
-        
+
+
         // --当场景完成加载时--
         await scene.whenReadyAsync();
-        scene.getMeshByName("outer").position = new Vector3(0,3,0);
+        scene.getMeshByName("outer").position = new Vector3(0, 3, 0);
         // 摆脱开始场景，切换到游戏场景并更改状态
         this._scene.dispose();
         this._state = State.GAME;
