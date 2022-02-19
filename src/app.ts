@@ -2,7 +2,7 @@ import "@babylonjs/core/Debug/debugLayer";
 import "@babylonjs/inspector";
 import "@babylonjs/loaders/glTF";
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, Mesh, MeshBuilder, FreeCamera, Color4, StandardMaterial, Color3, PointLight, ShadowGenerator, Quaternion, Matrix, SceneLoader } from "@babylonjs/core";
-import { AdvancedDynamicTexture, Button, Control } from "@babylonjs/gui";
+import { AdvancedDynamicTexture, Button, Control, Image } from "@babylonjs/gui";
 import { Environment } from "./environment";
 import { Player } from "./characterController";
 import { PlayerInput } from "./inputController";
@@ -403,14 +403,14 @@ class App {
         next.isVisible = false;
         cutScene.addControl(next);
 
-        
+
         next.onPointerUpObservable.add(() => {
             if (transition == 8) { // 一旦我们到达最后一个对话框架，goToGame
                 this._cutScene.detachControl();
                 this._engine.displayLoadingUI(); // 如果游戏尚未加载，我们将看到加载屏幕
                 transition = 0;
                 canplay = true;
-            } else if(transition < 8){ // 8个对话框架
+            } else if (transition < 8) { // 8个对话框架
                 transition++;
                 dialogue.cellId++;
             }
@@ -479,6 +479,7 @@ class App {
             });
         }
         return loadCharacter().then(assets => {
+            console.log("加载字符资产");
             this.assets = assets;
         })
 
