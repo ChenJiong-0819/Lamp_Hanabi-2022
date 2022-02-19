@@ -6,6 +6,7 @@ import { AdvancedDynamicTexture, Button, Control } from "@babylonjs/gui";
 import { Environment } from "./environment";
 import { Player } from "./characterController";
 import { PlayerInput } from "./inputController";
+import { Hud } from "./ui";
 
 enum State { START = 0, GAME = 1, LOSE = 2, CUTSCENE = 3 }
 
@@ -18,8 +19,9 @@ class App {
     // 游戏状态相关
     public assets;
     private _input: PlayerInput;
-    private _player: Player;
     private _environment: Environment;
+    private _player: Player;
+    private _ui: Hud;
 
 
     // 场景相关
@@ -89,6 +91,12 @@ class App {
                     this._scene.render();
                     break;
                 case State.GAME:
+                    // 一旦定时器 240 秒，带我们进入失败状态
+                    if (this._ui.time >= 240 && !this._player.win) {
+                        this._goToLose();
+                        this._ui.stopTimer();
+                    }
+
                     this._scene.render();
                     break;
                 case State.LOSE:
@@ -154,10 +162,237 @@ class App {
 
         //--GUI--
         const cutScene = AdvancedDynamicTexture.CreateFullscreenUI("cutscene");
+        let transition = 0; // 基于对话的增量
+        let canplay = false;
+        let finished_anim = false;
+        let anims_loaded = 0;
+
+        // 动画
+        const beginning_anim = new Image("sparkLife", "./sprites/beginning_anim.png");
+        beginning_anim.stretch = Image.STRETCH_UNIFORM;
+        beginning_anim.cellId = 0;
+        beginning_anim.cellHeight = 480;
+        beginning_anim.cellWidth = 480;
+        beginning_anim.sourceWidth = 480;
+        beginning_anim.sourceHeight = 480;
+        cutScene.addControl(beginning_anim);
+        beginning_anim.onImageLoadedObservable.add(() => {
+            anims_loaded++;
+        })
+        const working_anim = new Image("sparkLife", "./sprites/working_anim.png");
+        working_anim.stretch = Image.STRETCH_UNIFORM;
+        working_anim.cellId = 0;
+        working_anim.cellHeight = 480;
+        working_anim.cellWidth = 480;
+        working_anim.sourceWidth = 480;
+        working_anim.sourceHeight = 480;
+        working_anim.isVisible = false;
+        cutScene.addControl(working_anim);
+        working_anim.onImageLoadedObservable.add(() => {
+            anims_loaded++;
+        })
+        const dropoff_anim = new Image("sparkLife", "./sprites/dropoff_anim.png");
+        dropoff_anim.stretch = Image.STRETCH_UNIFORM;
+        dropoff_anim.cellId = 0;
+        dropoff_anim.cellHeight = 480;
+        dropoff_anim.cellWidth = 480;
+        dropoff_anim.sourceWidth = 480;
+        dropoff_anim.sourceHeight = 480;
+        dropoff_anim.isVisible = false;
+        cutScene.addControl(dropoff_anim);
+        dropoff_anim.onImageLoadedObservable.add(() => {
+            anims_loaded++;
+        })
+        const leaving_anim = new Image("sparkLife", "./sprites/leaving_anim.png");
+        leaving_anim.stretch = Image.STRETCH_UNIFORM;
+        leaving_anim.cellId = 0;
+        leaving_anim.cellHeight = 480;
+        leaving_anim.cellWidth = 480;
+        leaving_anim.sourceWidth = 480;
+        leaving_anim.sourceHeight = 480;
+        leaving_anim.isVisible = false;
+        cutScene.addControl(leaving_anim);
+        leaving_anim.onImageLoadedObservable.add(() => {
+            anims_loaded++;
+        })
+        const watermelon_anim = new Image("sparkLife", "./sprites/watermelon_anim.png");
+        watermelon_anim.stretch = Image.STRETCH_UNIFORM;
+        watermelon_anim.cellId = 0;
+        watermelon_anim.cellHeight = 480;
+        watermelon_anim.cellWidth = 480;
+        watermelon_anim.sourceWidth = 480;
+        watermelon_anim.sourceHeight = 480;
+        watermelon_anim.isVisible = false;
+        cutScene.addControl(watermelon_anim);
+        watermelon_anim.onImageLoadedObservable.add(() => {
+            anims_loaded++;
+        })
+        const reading_anim = new Image("sparkLife", "./sprites/reading_anim.png");
+        reading_anim.stretch = Image.STRETCH_UNIFORM;
+        reading_anim.cellId = 0;
+        reading_anim.cellHeight = 480;
+        reading_anim.cellWidth = 480;
+        reading_anim.sourceWidth = 480;
+        reading_anim.sourceHeight = 480;
+        reading_anim.isVisible = false;
+        cutScene.addControl(reading_anim);
+        reading_anim.onImageLoadedObservable.add(() => {
+            anims_loaded++;
+        })
+
+        // 对话动画
+        const dialogueBg = new Image("sparkLife", "./sprites/bg_anim_text_dialogue.png");
+        dialogueBg.stretch = Image.STRETCH_UNIFORM;
+        dialogueBg.cellId = 0;
+        dialogueBg.cellHeight = 480;
+        dialogueBg.cellWidth = 480;
+        dialogueBg.sourceWidth = 480;
+        dialogueBg.sourceHeight = 480;
+        dialogueBg.horizontalAlignment = 0;
+        dialogueBg.verticalAlignment = 0;
+        dialogueBg.isVisible = false;
+        cutScene.addControl(dialogueBg);
+        dialogueBg.onImageLoadedObservable.add(() => {
+            anims_loaded++;
+        })
+
+        const dialogue = new Image("sparkLife", "./sprites/text_dialogue.png");
+        dialogue.stretch = Image.STRETCH_UNIFORM;
+        dialogue.cellId = 0;
+        dialogue.cellHeight = 480;
+        dialogue.cellWidth = 480;
+        dialogue.sourceWidth = 480;
+        dialogue.sourceHeight = 480;
+        dialogue.horizontalAlignment = 0;
+        dialogue.verticalAlignment = 0;
+        dialogue.isVisible = false;
+        cutScene.addControl(dialogue);
+        dialogue.onImageLoadedObservable.add(() => {
+            anims_loaded++;
+        })
+
+        // 为对话背景循环动画
+        let dialogueTimer = setInterval(() => {
+            if (finished_anim && dialogueBg.cellId < 3) {
+                dialogueBg.cellId++;
+            } else {
+                dialogueBg.cellId = 0;
+            }
+        }, 250);
+
+        // 跳过剪贴画
+        const skipBtn = Button.CreateSimpleButton("skip", "SKIP");
+        skipBtn.fontFamily = "Viga";
+        skipBtn.width = "45px";
+        skipBtn.left = "-14px";
+        skipBtn.height = "40px";
+        skipBtn.color = "white";
+        skipBtn.top = "14px";
+        skipBtn.thickness = 0;
+        skipBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        skipBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        cutScene.addControl(skipBtn);
+
+        skipBtn.onPointerDownObservable.add(() => {
+            this._cutScene.detachControl();
+            clearInterval(animTimer);
+            clearInterval(anim2Timer);
+            clearInterval(dialogueTimer);
+            this._engine.displayLoadingUI();
+            canplay = true;
+        });
+
+        // --播放动画--
+        let animTimer;
+        let anim2Timer;
+        let anim = 1; // 跟踪我们正在播放的动画
+        // 设置动画的状态机
+        this._cutScene.onBeforeRenderObservable.add(() => {
+            if (anims_loaded == 8) {
+                this._engine.hideLoadingUI();
+                anims_loaded = 0;
+
+                // 动画序列
+                animTimer = setInterval(() => {
+                    switch (anim) {
+                        case 1:
+                            if (beginning_anim.cellId == 9) { // 每个动画可以有不同的帧数
+                                anim++;
+                                beginning_anim.isVisible = false; // 当前动画隐藏
+                                working_anim.isVisible = true; // 显示下一个动画
+                            } else {
+                                beginning_anim.cellId++;
+                            }
+                            break;
+                        case 2:
+                            if (working_anim.cellId == 11) {
+                                anim++;
+                                working_anim.isVisible = false;
+                                dropoff_anim.isVisible = true;
+                            } else {
+                                working_anim.cellId++;
+                            }
+                            break;
+                        case 3:
+                            if (dropoff_anim.cellId == 11) {
+                                anim++;
+                                dropoff_anim.isVisible = false;
+                                leaving_anim.isVisible = true;
+                            } else {
+                                dropoff_anim.cellId++;
+                            }
+                            break;
+                        case 4:
+                            if (leaving_anim.cellId == 9) {
+                                anim++;
+                                leaving_anim.isVisible = false;
+                                watermelon_anim.isVisible = true;
+                            } else {
+                                leaving_anim.cellId++;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }, 250);
+
+                // 使用不同时间间隔的动画序列2
+                anim2Timer = setInterval(() => {
+                    switch (anim) {
+                        case 5:
+                            if (watermelon_anim.cellId == 8) {
+                                anim++;
+                                watermelon_anim.isVisible = false;
+                                reading_anim.isVisible = true;
+                            } else {
+                                watermelon_anim.cellId++;
+                            }
+                            break;
+                        case 6:
+                            if (reading_anim.cellId == 11) {
+                                reading_anim.isVisible = false;
+                                finished_anim = true;
+                                dialogueBg.isVisible = true;
+                                dialogue.isVisible = true;
+                                next.isVisible = true;
+                            } else {
+                                reading_anim.cellId++;
+                            }
+                            break;
+                    }
+                }, 750);
+            }
+            // 只有当所有游戏资源都完成加载，并且你完成了动画序列+对话后，你才能进入游戏状态
+            if (finishedLoading && canplay) {
+                canplay = false;
+                this._goToGame();
+            }
+        })
+
 
         // --进展对话--
         const next = Button.CreateSimpleButton("next", "NEXT");
-        next.color = "white";
+        next.rotation = Math.PI / 2;
         next.thickness = 0;
         next.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         next.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
@@ -165,15 +400,24 @@ class App {
         next.height = "64px";
         next.top = "-3%";
         next.left = "-12%";
+        next.isVisible = false;
         cutScene.addControl(next);
 
+        
         next.onPointerUpObservable.add(() => {
-            // this._goToGame();
+            if (transition == 8) { // 一旦我们到达最后一个对话框架，goToGame
+                this._cutScene.detachControl();
+                this._engine.displayLoadingUI(); // 如果游戏尚未加载，我们将看到加载屏幕
+                transition = 0;
+                canplay = true;
+            } else if(transition < 8){ // 8个对话框架
+                transition++;
+                dialogue.cellId++;
+            }
         })
 
         // --场景加载完成后--
         await this._cutScene.whenReadyAsync();
-        this._engine.hideLoadingUI();
         this._scene.dispose();
         this._state = State.CUTSCENE;
         this._scene = this._cutScene;
@@ -182,7 +426,6 @@ class App {
         var finishedLoading = false;
         await this._setUpGame().then(res => {
             finishedLoading = true;
-            this._goToGame();
         });
     }
 
@@ -259,6 +502,24 @@ class App {
 
         // 设置灯笼碰撞检查
         this._environment.checkLanterns(this._player);
+
+        // --过渡后处理--
+        scene.onBeforeRenderObservable.add(() => {
+            //reset the sparkler timer
+            if (this._player.sparkReset) {
+                this._ui.startSparklerTimer();
+                this._player.sparkReset = false;
+            }
+            //stop the sparkler timer after 20 seconds
+            else if (this._ui.stopSpark && this._player.sparkLit) {
+                this._ui.stopSparklerTimer();
+                this._player.sparkLit = false;
+            }
+            // when the game isn't paused, update the timer
+            if (!this._ui.gamePaused) {
+                this._ui.updateHud();
+            }
+        });
     }
 
     private async _goToGame() {
@@ -268,28 +529,13 @@ class App {
         scene.clearColor = new Color4(0.01568627450980392, 0.01568627450980392, 0.20392156862745098); // a color that fit the overall color scheme better
 
         //--GUI--
-        const playerUI = AdvancedDynamicTexture.CreateFullscreenUI("UI");
+        const ui = new Hud(scene);
+        this._ui = ui;
         // 加载游戏时，不要检测到此ui的任何输入
         scene.detachControl();
 
-        // 创建一个简单的按钮
-        const loseBtn = Button.CreateSimpleButton("lose", "LOSE");
-        loseBtn.width = 0.2
-        loseBtn.height = "40px";
-        loseBtn.color = "white";
-        loseBtn.top = "-14px";
-        loseBtn.thickness = 0;
-        loseBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        playerUI.addControl(loseBtn);
-
-        // 这将处理与附加到场景的“开始”按钮的交互
-        loseBtn.onPointerDownObservable.add(() => {
-            this._goToLose();
-            scene.detachControl(); // 禁用的可观测值
-        });
-
         // - 输入 - 
-        this._input = new PlayerInput(scene); // 检测键盘/移动输入 
+        this._input = new PlayerInput(scene, this._ui); // 检测键盘/移动输入 
 
         // 原始文字与背景
         await this._initializeGameAsync(scene);
@@ -297,6 +543,11 @@ class App {
         // --当场景完成加载时--
         await scene.whenReadyAsync();
         scene.getMeshByName("outer").position = scene.getTransformNodeByName("startPosition").getAbsolutePosition(); // 将球员移动到起始位置
+
+        // 设置游戏计时器和火花计时器——链接到用户界面
+        this._ui.startTimer();
+        // this._ui.startSparklerTimer(this._player.sparkler);
+
         // 摆脱开始场景，切换到游戏场景并更改状态
         this._scene.dispose();
         this._state = State.GAME;

@@ -1,4 +1,5 @@
 import { Scene, ActionManager, ExecuteCodeAction, Scalar } from "@babylonjs/core";
+import { Hud } from "./ui";
 
 export class PlayerInput {
 
@@ -17,7 +18,7 @@ export class PlayerInput {
     public dashing: boolean = false;
     public jumpKeyDown: boolean = false;
 
-    constructor(scene: Scene) {
+    constructor(scene: Scene, ui: Hud) {
         scene.actionManager = new ActionManager(scene);
 
         this.inputMap = {};
@@ -58,7 +59,7 @@ export class PlayerInput {
             this.horizontal = 0;
             this.horizontalAxis = 0;
         }
-        
+
         // 短跑
         if (this.inputMap["Shift"]) {
             this.dashing = true;
