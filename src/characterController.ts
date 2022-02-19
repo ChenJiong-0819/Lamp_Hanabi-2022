@@ -1,4 +1,4 @@
-import { TransformNode, ShadowGenerator, Scene, Mesh, UniversalCamera, ArcRotateCamera, Vector3, Quaternion, Ray, ParticleSystem, ActionManager } from "@babylonjs/core";
+import { TransformNode, ShadowGenerator, Scene, Mesh, UniversalCamera, ArcRotateCamera, Vector3, Quaternion, Ray, ParticleSystem, ActionManager, ExecuteCodeAction } from "@babylonjs/core";
 // import { PlayerInput } from "./inputController";
 
 export class Player extends TransformNode {
@@ -65,6 +65,40 @@ export class Player extends TransformNode {
         this.mesh.actionManager = new ActionManager(this.scene);
 
         // this.scene.getLightByName("sparklight").parent = this.scene.getTransformNodeByName("Empty");
+
+        // 站台目的地
+        this.mesh.actionManager.registerAction(
+            new ExecuteCodeAction(
+                {
+                    trigger: ActionManager.OnIntersectionEnterTrigger,
+                    parameter: this.scene.getMeshByName("destination"),
+                },
+                () => {
+                    if (this.lanternsLit == 22) {
+                        this.win = true;
+                        // 倾斜摄像机以查看烟花将在何处燃放
+                        this._yTilt.rotation = new Vector3(5.689773361501514, 0.23736477827122882, 0);
+                        this._yTilt.position = new Vector3(0, 6, 0);
+                        this.camera.position.y = 17;
+                    }
+                },
+            ),
+        );
+
+        // 世界地面探测
+        // 如果玩家跌入“世界”，将位置重置为最后一个安全接地位置
+        this.mesh.actionManager.registerAction(
+            new ExecuteCodeAction(
+                {
+                    trigger: ActionManager.OnIntersectionEnterTrigger,
+                    parameter: this.scene.getMeshByName("ground"),
+                },
+                () => {
+                    this.mesh.position.copyFrom(this._lastGroundPos); // 需要使用copy，否则它们将同时指向同一个对象和更新
+                },
+            ),
+        );
+
 
         shadowGenerator.addShadowCaster(assets.mesh); // 玩家网格将投射阴影
 
@@ -260,7 +294,36 @@ export class Player extends TransformNode {
         return this.camera;
     }
 
+
+
     private _updateCamera(): void {
+
+        // 用于旋转相机视图的触发区域
+        if (this.mesh.intersectsMesh(this.scene.getMeshByName("cornerTrigger"))) {
+            if (this._input.horizontalAxis > 0) { // 向右旋转              
+                this._camRoot.rotation = Vector3.Lerp(this._camRoot.rotation, new Vector3(this._camRoot.rotation.x, Math.PI / 2, this._camRoot.rotation.z), 0.4);
+            } else if (this._input.horizontalAxis < 0) { // 向左旋转
+                this._camRoot.rotation = Vector3.Lerp(this._camRoot.rotation, new Vector3(this._camRoot.rotation.x, Math.PI, this._camRoot.rotation.z), 0.4);
+            }
+        }
+
+        // 当玩家进入该区域时，旋转相机使其指向下方，当玩家退出时，相机将恢复正常
+        if (this.mesh.intersectsMesh(this.scene.getMeshByName("festivalTrigger"))) {
+            if (this._input.verticalAxis > 0) {
+                this._yTilt.rotation = Vector3.Lerp(this._yTilt.rotation, Player.DOWN_TILT, 0.4);
+            } else if (this._input.verticalAxis < 0) {
+                this._yTilt.rotation = Vector3.Lerp(this._yTilt.rotation, Player.ORIGINAL_TILT, 0.4);
+            }
+        }
+        // 到达目的地后，如果他们离开，请返回原始方向，并将其旋转到上一个方向
+        if (this.mesh.intersectsMesh(this.scene.getMeshByName("destinationTrigger"))) {
+            if (this._input.verticalAxis > 0) {
+                this._yTilt.rotation = Vector3.Lerp(this._yTilt.rotation, Player.ORIGINAL_TILT, 0.4);
+            } else if (this._input.verticalAxis < 0) {
+                this._yTilt.rotation = Vector3.Lerp(this._yTilt.rotation, Player.DOWN_TILT, 0.4);
+            }
+        }
+
         let centerPlayer = this.mesh.position.y + 2;
         this._camRoot.position = Vector3.Lerp(this._camRoot.position, new Vector3(this.mesh.position.x, centerPlayer, this.mesh.position.z), 0.4);
     }

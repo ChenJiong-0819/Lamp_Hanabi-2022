@@ -36,6 +36,28 @@ export class Environment {
         assets.allMeshes.forEach((m) => {
             m.receiveShadows = true;
             m.checkCollisions = true;
+
+            
+            if (m.name == "ground") { // 不要检查碰撞，不要让光线投射来检测（不能降落）
+                m.checkCollisions = false;
+                m.isPickable = false;
+            }
+            // 将使用长方体碰撞的区域
+            if (m.name.includes("stairs") || m.name == "cityentranceground" || m.name == "fishingground.001" || m.name.includes("lilyflwr")) {
+                m.checkCollisions = false;
+                m.isPickable = false;
+            }
+            // 碰撞网格
+            if (m.name.includes("collision")) {
+                m.isVisible = false;
+                m.isPickable = true;
+            }
+            // 触发网格
+            if (m.name.includes("Trigger")) {
+                m.isVisible = false;
+                m.isPickable = false;
+                m.checkCollisions = false;
+            }
         });
 
         assets.lantern.isVisible = false; // 原始网格不可见
