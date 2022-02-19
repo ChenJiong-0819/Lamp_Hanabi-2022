@@ -58,6 +58,7 @@ export class PlayerInput {
             this.horizontal = 0;
             this.horizontalAxis = 0;
         }
+        
         // 短跑
         if (this.inputMap["Shift"]) {
             this.dashing = true;

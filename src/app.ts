@@ -255,7 +255,9 @@ class App {
         // 创建玩家
         this._player = new Player(this.assets, scene, shadowGenerator, this._input); // 还没有输入，所以我们不需要传递
         const camera = this._player.activatePlayerCamera();
-
+        
+        //--COLLISIONS--
+this.mesh.actionManager = new ActionManager(this.scene);
     }
 
     private async _goToGame() {
