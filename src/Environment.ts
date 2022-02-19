@@ -45,6 +45,7 @@ export class Environment {
         for (let i = 0; i < 22; i++) {
             // 网格克隆
             let lanternInstance = assets.lantern.clone("lantern" + i); // 引入进口的灯笼网并制作克隆  
+            lanternInstance.isVisible = true;
             lanternInstance.setParent(lanternHolder);
 
             // 创建新的灯笼对象
@@ -66,6 +67,10 @@ export class Environment {
     public async _loadAsset() {
         const result = await SceneLoader.ImportMeshAsync(null, "./models/", "envSetting.glb", this._scene);
 
+        let env = result.meshes[0];
+        let allMeshes = env.getChildMeshes();
+        console.log(env)
+
         // 装载灯笼网
         const res = await SceneLoader.ImportMeshAsync("", "./models/", "lantern.glb", this._scene);
 
@@ -73,10 +78,6 @@ export class Environment {
         let lantern = res.meshes[0].getChildren()[0];
         lantern.parent = null;
         res.meshes[0].dispose();
-
-        let env = result.meshes[0];
-        let allMeshes = env.getChildMeshes();
-        console.log(env)
 
         return {
             env: env, // 参考我们整个导入的glb（网格和变换节点）

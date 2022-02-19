@@ -168,7 +168,7 @@ class App {
         cutScene.addControl(next);
 
         next.onPointerUpObservable.add(() => {
-            this._goToGame();
+            // this._goToGame();
         })
 
         // --场景加载完成后--
@@ -257,8 +257,8 @@ class App {
         this._player = new Player(this.assets, scene, shadowGenerator, this._input); // 还没有输入，所以我们不需要传递
         const camera = this._player.activatePlayerCamera();
 
-        //--COLLISIONS--
-        // this.mesh.actionManager = new ActionManager(this.scene);
+        // 设置灯笼碰撞检查
+        this._environment.checkLanterns(this._player);
     }
 
     private async _goToGame() {
