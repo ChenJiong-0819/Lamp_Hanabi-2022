@@ -69,11 +69,14 @@ class App {
         // document.body.style.padding = "0";
 
         // 创建画布html元素并将其附加到网页
-        this._canvas = document.createElement("canvas");
-        this._canvas.style.width = "100%";
-        this._canvas.style.height = "100%";
-        this._canvas.id = "gameCanvas";
+        this._canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
         document.body.appendChild(this._canvas);
+
+        // this._canvas = document.createElement("canvas");
+        // this._canvas.style.width = "100%";
+        // this._canvas.style.height = "100%";
+        // this._canvas.id = "gameCanvas";
+        // document.body.appendChild(this._canvas);
 
         return this._canvas;
     }
