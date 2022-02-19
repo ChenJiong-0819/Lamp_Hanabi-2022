@@ -103,6 +103,7 @@ class App {
             this._engine.resize();
         });
     }
+
     private async _goToStart() {
         this._engine.displayLoadingUI();
 
@@ -219,8 +220,8 @@ class App {
 
             outer.rotationQuaternion = new Quaternion(0, 1, 0, 0); // 将播放器网格旋转 180，因为我们想看到播放器的背面 
 
-            
-            return SceneLoader.ImportMeshAsync(null, "./models/", "player.glb", scene).then((result) =>{
+
+            return SceneLoader.ImportMeshAsync(null, "./models/", "player.glb", scene).then((result) => {
                 const root = result.meshes[0];
                 // body 是我们实际的玩家网格
                 const body = root;
@@ -255,9 +256,9 @@ class App {
         // 创建玩家
         this._player = new Player(this.assets, scene, shadowGenerator, this._input); // 还没有输入，所以我们不需要传递
         const camera = this._player.activatePlayerCamera();
-        
+
         //--COLLISIONS--
-this.mesh.actionManager = new ActionManager(this.scene);
+        // this.mesh.actionManager = new ActionManager(this.scene);
     }
 
     private async _goToGame() {

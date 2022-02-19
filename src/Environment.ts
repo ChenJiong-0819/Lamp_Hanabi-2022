@@ -12,15 +12,15 @@ import { Player } from "./characterController";
 export class Environment {
     private _scene: Scene;
 
-    //Meshes
-    private _lanternObjs: Array<Lantern>; //array of lanterns that need to be lit
-    private _lightmtl: PBRMetallicRoughnessMaterial; // emissive texture for when lanterns are lit
+    // 网格
+    private _lanternObjs: Array<Lantern>; // 需要点亮的一排灯笼
+    private _lightmtl: PBRMetallicRoughnessMaterial; // 灯笼点亮时的发射纹理
 
     constructor(scene: Scene) {
         this._scene = scene;
 
         this._lanternObjs = [];
-        //create emissive material for when lantern is lit
+        // 为灯笼点亮时创建发射材质
         const lightmtl = new PBRMetallicRoughnessMaterial("lantern mesh light", this._scene);
         lightmtl.emissiveTexture = new Texture("/textures/litLantern.png", this._scene, true, false);
         lightmtl.emissiveColor = new Color3(0.8784313725490196, 0.7568627450980392, 0.6235294117647059);
@@ -56,14 +56,11 @@ export class Environment {
                     .getChildTransformNodes(false)
                     .find((m) => m.name === "lantern " + i)
                     .getAbsolutePosition(),
-                animGroupClone,
             );
             this._lanternObjs.push(newLantern);
         }
-
         // 处置克隆的原始网格和动画组
         assets.lantern.dispose();
-
     }
 
     public async _loadAsset() {
@@ -80,8 +77,6 @@ export class Environment {
         let env = result.meshes[0];
         let allMeshes = env.getChildMeshes();
         console.log(env)
-
-
 
         return {
             env: env, // 参考我们整个导入的glb（网格和变换节点）
