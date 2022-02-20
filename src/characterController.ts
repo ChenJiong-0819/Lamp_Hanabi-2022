@@ -1,4 +1,4 @@
-import { TransformNode, ShadowGenerator, Scene, Mesh, UniversalCamera, ArcRotateCamera, Vector3, Quaternion, Ray, ParticleSystem, ActionManager, ExecuteCodeAction } from "@babylonjs/core";
+import { TransformNode, ShadowGenerator, Scene, Mesh, UniversalCamera, ArcRotateCamera, Vector3, Quaternion, AnimationGroup, Ray, ParticleSystem, ActionManager, ExecuteCodeAction } from "@babylonjs/core";
 // import { PlayerInput } from "./inputController";
 
 export class Player extends TransformNode {
@@ -13,6 +13,19 @@ export class Player extends TransformNode {
     // 相机
     private _camRoot: TransformNode;
     private _yTilt: TransformNode;
+
+    //animations
+    private _run: AnimationGroup;
+    private _idle: AnimationGroup;
+    private _jump: AnimationGroup;
+    private _land: AnimationGroup;
+    private _dash: AnimationGroup;
+
+    // animation trackers
+    private _currentAnim: AnimationGroup = null;
+    private _prevAnim: AnimationGroup;
+    private _isFalling: boolean = false;
+    private _jumped: boolean = false;
 
     //const values
     private static readonly PLAYER_SPEED: number = 0.45;
@@ -66,6 +79,13 @@ export class Player extends TransformNode {
 
         // this.scene.getLightByName("sparklight").parent = this.scene.getTransformNodeByName("Empty");
 
+        this._idle = assets.animationGroups[1];
+        this._jump = assets.animationGroups[2];
+        this._land = assets.animationGroups[3];
+        this._run = assets.animationGroups[4];
+        this._dash = assets.animationGroups[0];
+
+
         // 站台目的地
         this.mesh.actionManager.registerAction(
             new ExecuteCodeAction(
@@ -100,6 +120,7 @@ export class Player extends TransformNode {
         );
 
 
+        this._setUpAnimations();
         shadowGenerator.addShadowCaster(assets.mesh); // 玩家网格将投射阴影
 
         this._input = input; // 我们将从inputController.ts获取输入
@@ -116,6 +137,8 @@ export class Player extends TransformNode {
         if (this._input.dashing && !this._dashPressed && this._canDash && !this._grounded) {
             this._canDash = false; // 我们已经开始冲刺了，不要再冲刺了
             this._dashPressed = true; // 开始破折号序列
+
+            this._currentAnim = this._dash;
         }
 
         let dashFactor = 1;
@@ -166,6 +189,34 @@ export class Player extends TransformNode {
         angle += this._camRoot.rotation.y;
         let targ = Quaternion.FromEulerAngles(0, angle, 0);
         this.mesh.rotationQuaternion = Quaternion.Slerp(this.mesh.rotationQuaternion, targ, 10 * this._deltaTime);
+    }
+
+    private _setUpAnimations(): void {
+
+        this.scene.stopAllAnimations();
+        this._run.loopAnimation = true;
+        this._idle.loopAnimation = true;
+
+        // 初始化当前和上一个
+        this._currentAnim = this._idle;
+        this._prevAnim = this._land;
+    }
+
+    private _animatePlayer(): void {
+        if (!this._dashPressed && !this._isFalling && !this._jumped
+            && (this._input.inputMap["ArrowUp"] || this._input.mobileUp
+                || this._input.inputMap["ArrowDown"] || this._input.mobileDown
+                || this._input.inputMap["ArrowLeft"] || this._input.mobileLeft
+                || this._input.inputMap["ArrowRight"] || this._input.mobileRight)) {
+
+            this._currentAnim = this._run;
+        } else if (this._jumped && !this._isFalling && !this._dashPressed) {
+            this._currentAnim = this._jump;
+        } else if (!this._isFalling && this._grounded) {
+            this._currentAnim = this._idle;
+        } else if (this._isFalling) {
+            this._currentAnim = this._land;
+        }
     }
 
     private _floorRaycast(offsetx: number, offsetz: number, raycastlen: number): Vector3 {
@@ -256,6 +307,12 @@ export class Player extends TransformNode {
         if (this._gravity.y < -Player.JUMP_FORCE) {
             this._gravity.y = -Player.JUMP_FORCE;
         }
+
+        // 一旦重力开始向下推动，提示下落动画
+        if (this._gravity.y < 0 && this._jumped) { // 待办事项：如果不是在斜坡上，而是在地面上，那就玩一个坠落的动画
+            this._isFalling = true;
+        }
+
         this.mesh.moveWithCollisions(this._moveDirection.addInPlace(this._gravity));
 
         if (this._isGrounded()) {
@@ -270,18 +327,27 @@ export class Player extends TransformNode {
             // 重置顺序（如果我们在实际完成短跑持续时间之前与地面相撞，则需要重置）
             this.dashTime = 0;
             this._dashPressed = false;
+
+            // 跳跃和下落动画标志
+            this._jumped = false;
+            this._isFalling = false;
         }
 
-        //跳跃检测
+        // 跳跃检测
         if (this._input.jumpKeyDown && this._jumpCount > 0) {
             this._gravity.y = Player.JUMP_FORCE;
             this._jumpCount--;
+
+            // 跳跃和下落动画旗帜
+            this._jumped = true;
+            this._isFalling = false;
         }
     }
 
     private _beforeRenderUpdate(): void {
         this._updateFromControls();
         this._updateGroundDetection();
+        this._animatePlayer();
     }
 
     public activatePlayerCamera(): UniversalCamera {

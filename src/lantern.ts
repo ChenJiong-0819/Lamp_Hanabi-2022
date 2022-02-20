@@ -9,6 +9,9 @@ export class Lantern {
     private _lightSphere: Mesh;
     private _lightmtl: PBRMetallicRoughnessMaterial;
 
+    // 灯笼动画
+    private _spinAnim: AnimationGroup;
+
     constructor(lightmtl: PBRMetallicRoughnessMaterial, mesh: Mesh, scene: Scene, position: Vector3, animationGroups?: AnimationGroup) {
         this._scene = scene;
         this._lightmtl = lightmtl;
@@ -38,6 +41,9 @@ export class Lantern {
 
         // 交换纹理
         this.mesh.material = this._lightmtl;
+
+        // 播放动画
+        this._spinAnim.play();
 
         // 为灯笼创造光源
         const light = new PointLight("lantern light", this.mesh.getAbsolutePosition(), this._scene);

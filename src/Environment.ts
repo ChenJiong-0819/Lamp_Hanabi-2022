@@ -37,7 +37,7 @@ export class Environment {
             m.receiveShadows = true;
             m.checkCollisions = true;
 
-            
+
             if (m.name == "ground") { // 不要检查碰撞，不要让光线投射来检测（不能降落）
                 m.checkCollisions = false;
                 m.isPickable = false;
@@ -70,6 +70,10 @@ export class Environment {
             lanternInstance.isVisible = true;
             lanternInstance.setParent(lanternHolder);
 
+            // 动画克隆
+            let animGroupClone = new AnimationGroup("lanternAnimGroup " + i);
+            animGroupClone.addTargetedAnimation(assets.animationGroups.targetedAnimations[0].animation, lanternInstance);
+
             // 创建新的灯笼对象
             let newLantern = new Lantern(
                 this._lightmtl,
@@ -79,11 +83,13 @@ export class Environment {
                     .getChildTransformNodes(false)
                     .find((m) => m.name === "lantern " + i)
                     .getAbsolutePosition(),
+                animGroupClone
             );
             this._lanternObjs.push(newLantern);
         }
         // 处置克隆的原始网格和动画组
         assets.lantern.dispose();
+        assets.animationGroups.dispose();
     }
 
     public async _loadAsset() {
@@ -101,11 +107,22 @@ export class Environment {
         lantern.parent = null;
         res.meshes[0].dispose();
 
+        // --动画--
+        // 从灯笼中提取动画（以下是解除动画组神秘感的视频）
+        const importedAnims = res.animationGroups;
+        let animation = [];
+        animation.push(importedAnims[0].targetedAnimations[0].animation);
+        importedAnims[0].dispose();
+        // 创建一个新的动画组，并将网格作为其动画的目标
+        let animGroup = new AnimationGroup("lanternAnimGroup");
+        animGroup.addTargetedAnimation(animation[0], res.meshes[1]);
+
         return {
             env: env, // 参考我们整个导入的glb（网格和变换节点）
             allMeshes: allMeshes, // 环境中的所有网格
             // 环境保护网
             lantern: lantern as Mesh,
+            animationGroups: animGroup
         };
     }
 
