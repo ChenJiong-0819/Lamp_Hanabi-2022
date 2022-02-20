@@ -1,5 +1,5 @@
-import { TransformNode, ShadowGenerator, Scene, Mesh, UniversalCamera, ArcRotateCamera, Vector3, Quaternion, AnimationGroup, Ray, ParticleSystem, ActionManager, ExecuteCodeAction } from "@babylonjs/core";
-// import { PlayerInput } from "./inputController";
+import { Scene, Vector3, Ray, TransformNode, Mesh, Color3, Color4, UniversalCamera, Quaternion, AnimationGroup, ExecuteCodeAction, ActionManager, ParticleSystem, Texture, SphereParticleEmitter, Sound, Observable, ShadowGenerator } from "@babylonjs/core";
+import { PlayerInput } from "./inputController";
 
 export class Player extends TransformNode {
 
@@ -418,6 +418,45 @@ export class Player extends TransformNode {
 
         this.scene.activeCamera = this.camera;
         return this.camera;
+    }
+
+    private _createSparkles(): void {
+
+        const sphere = Mesh.CreateSphere("sparkles", 4, 1, this.scene);
+        sphere.position = new Vector3(0, 0, 0);
+        sphere.parent = this.scene.getTransformNodeByName("Empty"); // 将“粒子系统”放置在玩家网格上火花的尖端
+        sphere.isVisible = false;
+
+        let particleSystem = new ParticleSystem("sparkles", 1000, this.scene);
+        particleSystem.particleTexture = new Texture("textures/flwr.png", this.scene);
+        particleSystem.emitter = sphere;
+        particleSystem.particleEmitterType = new SphereParticleEmitter(0);
+
+        particleSystem.updateSpeed = 0.014;
+        particleSystem.minAngularSpeed = 0;
+        particleSystem.maxAngularSpeed = 360;
+        particleSystem.minEmitPower = 1;
+        particleSystem.maxEmitPower = 3;
+
+        particleSystem.minSize = 0.5;
+        particleSystem.maxSize = 2;
+        particleSystem.minScaleX = 0.5;
+        particleSystem.minScaleY = 0.5;
+        particleSystem.color1 = new Color4(0.8, 0.8549019607843137, 1, 1);
+        particleSystem.color2 = new Color4(0.8509803921568627, 0.7647058823529411, 1, 1);
+
+        particleSystem.addRampGradient(0, Color3.White());
+        particleSystem.addRampGradient(1, Color3.Black());
+        particleSystem.getRampGradients()[0].color = Color3.FromHexString("#BBC1FF");
+        particleSystem.getRampGradients()[1].color = Color3.FromHexString("#FFFFFF");
+        particleSystem.maxAngularSpeed = 0;
+        particleSystem.maxInitialRotation = 360;
+        particleSystem.minAngularSpeed = -10;
+        particleSystem.maxAngularSpeed = 10;
+
+        particleSystem.start();
+
+        this.sparkler = particleSystem;
     }
 
 
