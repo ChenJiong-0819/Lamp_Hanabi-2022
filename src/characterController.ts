@@ -14,20 +14,20 @@ export class Player extends TransformNode {
     private _camRoot: TransformNode;
     private _yTilt: TransformNode;
 
-    //animations
+    // 动画
     private _run: AnimationGroup;
     private _idle: AnimationGroup;
     private _jump: AnimationGroup;
     private _land: AnimationGroup;
     private _dash: AnimationGroup;
 
-    // animation trackers
+    // 动画跟踪器
     private _currentAnim: AnimationGroup = null;
     private _prevAnim: AnimationGroup;
     private _isFalling: boolean = false;
     private _jumped: boolean = false;
 
-    //const values
+    // 常数值
     private static readonly PLAYER_SPEED: number = 0.45;
     private static readonly JUMP_FORCE: number = 0.80;
     private static readonly GRAVITY: number = -2.8;
@@ -55,35 +55,59 @@ export class Player extends TransformNode {
     private _grounded: boolean;
     private _jumpCount: number = 1;
 
-    //player variables
-    public lanternsLit: number = 1; //num lanterns lit
+    // 玩家变量
+    public lanternsLit: number = 1; // 点亮了多少盏灯笼
     public totalLanterns: number;
-    public win: boolean = false; //whether the game is won
+    public win: boolean = false; // 比赛是否获胜
 
-    //sparkler
-    public sparkler: ParticleSystem; // sparkler particle system
+    // 火花
+    public sparkler: ParticleSystem; // 火花粒子系统
     public sparkLit: boolean = true;
     public sparkReset: boolean = false;
+
+
+    // 移动平台
+    public _raisePlatform: boolean;
+
+    //sfx
+    public lightSfx: Sound;
+    public sparkResetSfx: Sound;
+    private _resetSfx: Sound;
+    private _walkingSfx: Sound;
+    private _jumpingSfx: Sound;
+    private _dashingSfx: Sound;
+
+    // 可观测
+    public onRun = new Observable();
+
+    // 辅导的
+    public tutorial_move;
+    public tutorial_dash;
+    public tutorial_jump;
 
 
     constructor(assets, scene: Scene, shadowGenerator: ShadowGenerator, input?) {
         super("player", scene);
         this.scene = scene;
-        this._setupPlayerCamera();
 
+        // 设置声音
+        this._loadSounds(this.scene);
+
+        // 相机
+        this._setupPlayerCamera();
         this.mesh = assets.mesh;
         this.mesh.parent = this;
 
-        // --碰撞--
-        this.mesh.actionManager = new ActionManager(this.scene);
-
-        // this.scene.getLightByName("sparklight").parent = this.scene.getTransformNodeByName("Empty");
+        this.scene.getLightByName("sparklight").parent = this.scene.getTransformNodeByName("Empty");
 
         this._idle = assets.animationGroups[1];
         this._jump = assets.animationGroups[2];
         this._land = assets.animationGroups[3];
         this._run = assets.animationGroups[4];
         this._dash = assets.animationGroups[0];
+
+        // --碰撞--
+        this.mesh.actionManager = new ActionManager(this.scene);
 
 
         // 站台目的地
@@ -115,11 +139,24 @@ export class Player extends TransformNode {
                 },
                 () => {
                     this.mesh.position.copyFrom(this._lastGroundPos); // 需要使用copy，否则它们将同时指向同一个对象和更新
+                    // --声音--
+                    this._resetSfx.play();
                 },
             ),
         );
 
+        // --声音--
+        // 可观察何时播放步行sfx
+        this.onRun.add((play) => {
+            if (play && !this._walkingSfx.isPlaying) {
+                this._walkingSfx.play();
+            } else if (!play && this._walkingSfx.isPlaying) {
+                this._walkingSfx.stop();
+                this._walkingSfx.isPlaying = false; // 确保WalkingFX。只有一次叫停
+            }
+        })
 
+        this._createSparkles(); // 创建sparkler粒子系统
         this._setUpAnimations();
         shadowGenerator.addShadowCaster(assets.mesh); // 玩家网格将投射阴影
 
@@ -134,11 +171,26 @@ export class Player extends TransformNode {
         this._h = this._input.horizontal; // x轴
         this._v = this._input.vertical; // z轴
 
+        // 教程，如果玩家第一次移动
+        if ((this._h != 0 || this._v != 0) && !this.tutorial_move) {
+            this.tutorial_move = true;
+        }
+
+        // --冲刺的--
+        // 将仪表板每次接触地面/平台的次数限制为一次
+        // 只能在空中冲刺
         if (this._input.dashing && !this._dashPressed && this._canDash && !this._grounded) {
             this._canDash = false; // 我们已经开始冲刺了，不要再冲刺了
             this._dashPressed = true; // 开始破折号序列
 
+            // sfx和动画
             this._currentAnim = this._dash;
+            this._dashingSfx.play();
+
+            // 教程，如果玩家第一次冲刺
+            if (!this.tutorial_dash) {
+                this.tutorial_dash = true;
+            }
         }
 
         let dashFactor = 1;
@@ -210,31 +262,50 @@ export class Player extends TransformNode {
                 || this._input.inputMap["ArrowRight"] || this._input.mobileRight)) {
 
             this._currentAnim = this._run;
+            this.onRun.notifyObservers(true);
         } else if (this._jumped && !this._isFalling && !this._dashPressed) {
             this._currentAnim = this._jump;
         } else if (!this._isFalling && this._grounded) {
             this._currentAnim = this._idle;
+            // 仅在播放时通知观察者
+            if (this.scene.getSoundByName("walking").isPlaying) {
+                this.onRun.notifyObservers(false);
+            }
         } else if (this._isFalling) {
             this._currentAnim = this._land;
         }
+
+        // 动画
+        if (this._currentAnim != null && this._prevAnim !== this._currentAnim) {
+            this._prevAnim.stop();
+            this._currentAnim.play(this._currentAnim.loopAnimation);
+            this._prevAnim = this._currentAnim;
+        }
     }
 
+    // --地面探测--
+    // 将光线投射发送到地板，以检测角色下方是否有网格命中
     private _floorRaycast(offsetx: number, offsetz: number, raycastlen: number): Vector3 {
+
+        //从网格的底部中心定位光线投射
         let raycastFloorPos = new Vector3(this.mesh.position.x + offsetx, this.mesh.position.y + 0.5, this.mesh.position.z + offsetz);
         let ray = new Ray(raycastFloorPos, Vector3.Up().scale(-1), raycastlen);
 
+        // 定义了应可拾取的网格类型
         let predicate = function (mesh) {
             return mesh.isPickable && mesh.isEnabled();
         }
+
         let pick = this.scene.pickWithRay(ray, predicate);
 
-        if (pick.hit) {
+        if (pick.hit) {// 停飞
             return pick.pickedPoint;
-        } else {
+        } else {// 不接地
             return Vector3.Zero();
         }
     }
 
+    // 从球员中心进行光线投射，检查球员是否停飞
     private _isGrounded(): boolean {
         if (this._floorRaycast(0, 0, 0.6).equals(Vector3.Zero())) {
             return false;
@@ -243,6 +314,9 @@ export class Player extends TransformNode {
         }
     }
 
+    // https://www.babylonjs-playground.com/#FUK3S#8
+    // https://www.html5gamedevs.com/topic/7709-scenepick-a-mesh-that-is-enabled-but-not-visible/
+    // 检查网格是否基于法线倾斜
     private _checkSlope(): boolean {
 
         // 仅检查可拾取并启用的网格（特定于不可见的碰撞网格）
@@ -290,6 +364,9 @@ export class Player extends TransformNode {
     }
 
     private _updateGroundDetection(): void {
+        this._deltaTime = this.scene.getEngine().getDeltaTime() / 1000.0;
+
+        // 如果不停飞
         if (!this._isGrounded()) {
             // 如果角色没有被接地，检查它是否在斜坡上，是否坠落或走到上面
             if (this._checkSlope() && this._gravity.y <= 0) {
@@ -303,6 +380,7 @@ export class Player extends TransformNode {
                 this._grounded = false;
             }
         }
+
         // 将重力速度限制为跳跃力的负数
         if (this._gravity.y < -Player.JUMP_FORCE) {
             this._gravity.y = -Player.JUMP_FORCE;
@@ -313,6 +391,7 @@ export class Player extends TransformNode {
             this._isFalling = true;
         }
 
+        // 更新我们的动作来解释跳跃
         this.mesh.moveWithCollisions(this._moveDirection.addInPlace(this._gravity));
 
         if (this._isGrounded()) {
@@ -341,6 +420,12 @@ export class Player extends TransformNode {
             // 跳跃和下落动画旗帜
             this._jumped = true;
             this._isFalling = false;
+            this._jumpingSfx.play();
+
+            // 教程，如果玩家第一次跳
+            if (!this.tutorial_jump) {
+                this.tutorial_jump = true;
+            }
         }
     }
 
@@ -360,8 +445,7 @@ export class Player extends TransformNode {
         return this.camera;
     }
 
-
-
+    // --相机--
     private _updateCamera(): void {
 
         // 用于旋转相机视图的触发区域
@@ -381,6 +465,7 @@ export class Player extends TransformNode {
                 this._yTilt.rotation = Vector3.Lerp(this._yTilt.rotation, Player.ORIGINAL_TILT, 0.4);
             }
         }
+
         // 到达目的地后，如果他们离开，请返回原始方向，并将其旋转到上一个方向
         if (this.mesh.intersectsMesh(this.scene.getMeshByName("destinationTrigger"))) {
             if (this._input.verticalAxis > 0) {
@@ -390,6 +475,7 @@ export class Player extends TransformNode {
             }
         }
 
+        // 更新摄像头位置向上/向下移动
         let centerPlayer = this.mesh.position.y + 2;
         this._camRoot.position = Vector3.Lerp(this._camRoot.position, new Vector3(this.mesh.position.x, centerPlayer, this.mesh.position.z), 0.4);
     }
@@ -460,4 +546,32 @@ export class Player extends TransformNode {
     }
 
 
+    private _loadSounds(scene: Scene): void {
+
+        this.lightSfx = new Sound("light", "./sounds/Rise03.mp3", scene, function () {
+        });
+
+        this.sparkResetSfx = new Sound("sparkReset", "./sounds/Rise04.mp3", scene, function () {
+        });
+
+        this._jumpingSfx = new Sound("jumping", "./sounds/187024__lloydevans09__jump2.wav", scene, function () {
+        }, {
+            volume: 0.25
+        });
+
+        this._dashingSfx = new Sound("dashing", "./sounds/194081__potentjello__woosh-noise-1.wav", scene, function () {
+        });
+
+        this._walkingSfx = new Sound("walking", "./sounds/Concrete 2.wav", scene, function () {
+        }, {
+            loop: true,
+            volume: 0.20,
+            playbackRate: 0.6
+        });
+
+        this._resetSfx = new Sound("reset", "./sounds/Retro Magic Protection 25.wav", scene, function () {
+        }, {
+            volume: 0.25
+        });
+    }
 }

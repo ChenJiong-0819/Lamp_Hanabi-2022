@@ -6,8 +6,8 @@ export class Lantern {
 
     public mesh: Mesh;
     public isLit: boolean = false;
-    private _lightSphere: Mesh;
     private _lightmtl: PBRMetallicRoughnessMaterial;
+    private _light: PointLight;
 
     // 灯笼动画
     private _spinAnim: AnimationGroup;
@@ -15,21 +15,27 @@ export class Lantern {
     // 粒子系统
     private _stars: ParticleSystem;
 
-    constructor(lightmtl: PBRMetallicRoughnessMaterial, mesh: Mesh, scene: Scene, position: Vector3, animationGroups?: AnimationGroup) {
+    constructor(lightmtl: PBRMetallicRoughnessMaterial, mesh: Mesh, scene: Scene, position: Vector3, animationGroups: AnimationGroup) {
         this._scene = scene;
         this._lightmtl = lightmtl;
 
-        // 创建灯笼的照明球体
-        const lightSphere = Mesh.CreateSphere("illum", 4, 20, this._scene);
-        lightSphere.scaling.y = 2;
-        lightSphere.setAbsolutePosition(position);
-        lightSphere.parent = this.mesh;
-        lightSphere.isVisible = false;
-        lightSphere.isPickable = false;
-        this._lightSphere = lightSphere;
-
         // 装上灯笼网
         this._loadLantern(mesh, position);
+
+        // 负载粒子系统
+        this._loadStars();
+
+        // 设置动画
+        this._spinAnim = animationGroups;
+
+        // 为灯笼创造光源
+        const light = new PointLight("lantern light", this.mesh.getAbsolutePosition(), this._scene);
+        light.intensity = 0;
+        light.radius = 2;
+        light.diffuse = new Color3(0.45, 0.56, 0.80);
+        this._light = light;
+        // 仅允许灯光影响其附近的网格
+        this._findNearestMeshes(light);
     }
 
     private _loadLantern(mesh: Mesh, position: Vector3): void {
@@ -42,30 +48,29 @@ export class Lantern {
     public setEmissiveTexture(): void {
         this.isLit = true;
 
+        // 播放动画和粒子系统
+        this._spinAnim.play();
+        this._stars.start();
         // 交换纹理
         this.mesh.material = this._lightmtl;
-
-        // 播放动画
-        this._spinAnim.play();
-
-        // 为灯笼创造光源
-        const light = new PointLight("lantern light", this.mesh.getAbsolutePosition(), this._scene);
-        light.intensity = 30;
-        light.radius = 2;
-        light.diffuse = new Color3(0.45, 0.56, 0.80);
-        this._findNearestMeshes(light);
+        this._light.intensity = 30;
     }
 
-    // 创建灯光时，仅包括照明球体内的网格
+    // 创建灯光时，仅包括指定的网格
     private _findNearestMeshes(light: PointLight): void {
-        this._scene.getMeshByName("__root__").getChildMeshes().forEach(m => {
-            if (this._lightSphere.intersectsMesh(m)) {
-                light.includedOnlyMeshes.push(m);
-            }
-        });
-
-        // 除掉球体
-        this._lightSphere.dispose();
+        if (this.mesh.name.includes("14") || this.mesh.name.includes("15")) {
+            light.includedOnlyMeshes.push(this._scene.getMeshByName("festivalPlatform1"));
+        } else if (this.mesh.name.includes("16") || this.mesh.name.includes("17")) {
+            light.includedOnlyMeshes.push(this._scene.getMeshByName("festivalPlatform2"));
+        } else if (this.mesh.name.includes("18") || this.mesh.name.includes("19")) {
+            light.includedOnlyMeshes.push(this._scene.getMeshByName("festivalPlatform3"));
+        } else if (this.mesh.name.includes("20") || this.mesh.name.includes("21")) {
+            light.includedOnlyMeshes.push(this._scene.getMeshByName("festivalPlatform4"));
+        }
+        // 抓取对应的变换节点，该节点包含受此灯笼灯光影响的所有网格
+        this._scene.getTransformNodeByName(this.mesh.name + "lights").getChildMeshes().forEach(m => {
+            light.includedOnlyMeshes.push(m);
+        })
     }
 
     private _loadStars(): void {

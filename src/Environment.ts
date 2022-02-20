@@ -1,10 +1,4 @@
-import {
-    Scene, Mesh, Vector3, Color3,
-    TransformNode, SceneLoader, ParticleSystem, Color4,
-    Texture, PBRMetallicRoughnessMaterial, VertexBuffer,
-    AnimationGroup, Sound, ExecuteCodeAction, ActionManager,
-    Tags
-} from "@babylonjs/core";
+import { Scene, Mesh, Vector3, Color3, TransformNode, SceneLoader, ParticleSystem, Color4, Texture, PBRMetallicRoughnessMaterial, VertexBuffer, AnimationGroup, Sound, ExecuteCodeAction, ActionManager, Tags } from "@babylonjs/core";
 import { Lantern } from "./lantern";
 import { Player } from "./characterController";
 
@@ -24,6 +18,7 @@ export class Environment {
         this._scene = scene;
 
         this._lanternObjs = [];
+
         // 为灯笼点亮时创建发射材质
         const lightmtl = new PBRMetallicRoughnessMaterial("lantern mesh light", this._scene);
         lightmtl.emissiveTexture = new Texture("/textures/litLantern.png", this._scene, true, false);
@@ -31,16 +26,18 @@ export class Environment {
         this._lightmtl = lightmtl;
     }
 
+    // 一旦环境资产被导入，我们会做什么
+    // 处理为碰撞和触发网格设置必要的标志，
+    // 设置灯笼对象
+    // 为游戏结束创建烟花粒子系统
     public async load() {
-        // var ground = Mesh.CreateBox("ground", 24, this._scene);
-        // ground.scaling = new Vector3(1, .02, 1);
 
         const assets = await this._loadAsset();
+
         // 循环浏览导入的所有环境网格
         assets.allMeshes.forEach((m) => {
             m.receiveShadows = true;
             m.checkCollisions = true;
-
 
             if (m.name == "ground") { // 不要检查碰撞，不要让光线投射来检测（不能降落）
                 m.checkCollisions = false;
@@ -64,10 +61,10 @@ export class Environment {
             }
         });
 
+        //--灯笼--
         assets.lantern.isVisible = false; // 原始网格不可见
         // 转换节点以容纳所有灯笼
         const lanternHolder = new TransformNode("lanternHolder", this._scene);
-
         for (let i = 0; i < 22; i++) {
             // 网格克隆
             let lanternInstance = assets.lantern.clone("lantern" + i); // 引入进口的灯笼网并制作克隆  
@@ -110,12 +107,12 @@ export class Environment {
         })
     }
 
+    // 加载环境所需的所有网格
     public async _loadAsset() {
         const result = await SceneLoader.ImportMeshAsync(null, "./models/", "envSetting.glb", this._scene);
 
         let env = result.meshes[0];
         let allMeshes = env.getChildMeshes();
-        console.log(env)
 
         // 装载灯笼网
         const res = await SceneLoader.ImportMeshAsync("", "./models/", "lantern.glb", this._scene);
@@ -166,11 +163,17 @@ export class Environment {
                             // 重新设置火花
                             player.sparkReset = true;
                             player.sparkLit = true;
+
+                            //SFX
+                            player.lightSfx.play();
                         }
                         // 如果灯已经亮了, 重新设置火花
                         else if (lantern.isLit) {
                             player.sparkReset = true;
                             player.sparkLit = true;
+
+                            //SFX
+                            player.sparkResetSfx.play();
                         }
                     }
                 )
@@ -189,6 +192,11 @@ class Firework {
     private _height: number;
     private _delay: number;
     private _started: boolean;
+
+    //sounds
+    private _explosionSfx: Sound;
+    private _rocketSfx: Sound;
+
 
     constructor(scene: Scene, i: number) {
         this._scene = scene;
@@ -310,5 +318,17 @@ class Firework {
                 this._delay--;
             }
         }
+    }
+
+    private _loadSounds(): void {
+        this._rocketSfx = new Sound("selection", "./sounds/fw_05.wav", this._scene, function () {
+        }, {
+            volume: 0.5,
+        });
+
+        this._explosionSfx = new Sound("selection", "./sounds/fw_03.wav", this._scene, function () {
+        }, {
+            volume: 0.5,
+        });
     }
 }
