@@ -164,7 +164,7 @@ class App {
         const startbg = new Image("startbg", "sprites/start.jpeg");
         imageRect.addControl(startbg);
 
-        const title = new TextBlock("title", "SUMMER'S FESTIVAL");
+        const title = new TextBlock("title", "LANTERN'S FESTIVAL");
         title.resizeToFit = true;
         title.fontFamily = "Ceviche One";
         title.fontSize = "64px";
@@ -678,82 +678,82 @@ class App {
         const wincreds = new TextBlock("special");
         wincreds.resizeToFit = true;
         wincreds.color = "white";
-        wincreds.text = "Special thanks to the Babylon Team!";
+        wincreds.text = "感谢您观看我的毕业设计!";
         wincreds.textWrapping = true;
         wincreds.height = "24px";
         wincreds.width = "100%";
         wincreds.fontFamily = "Viga";
         stackPanel.addControl(wincreds);
 
-        // 音乐与SFX学分
-        const music = new TextBlock("music", "Music");
-        music.fontSize = 22;
-        music.resizeToFit = true;
-        music.textWrapping = true;
+        // 最后简介
+        const title = new TextBlock("title", "题目：基于开源引擎的网页3D游戏的设计与实现");
+        title.fontSize = 22;
+        title.resizeToFit = true;
+        title.textWrapping = true;
 
-        const source = new TextBlock("sources", "Sources: freesound.org, opengameart.org, and itch.io")
-        source.textWrapping = true;
-        source.resizeToFit = true;
+        const school = new TextBlock("school", "学校：广东科技学院")
+        school.textWrapping = true;
+        school.resizeToFit = true;
 
-        const jumpCred = new TextBlock("jumpCred", "jump2 by LloydEvans09 - freesound.org");
-        jumpCred.textWrapping = true;
-        jumpCred.resizeToFit = true;
+        const classes = new TextBlock("classes", "班级：18软件工程18班");
+        classes.textWrapping = true;
+        classes.resizeToFit = true;
 
-        const walkCred = new TextBlock("walkCred", "Concrete 2 by MayaSama @mayasama.itch.io / ig: @mayaragandra");
-        walkCred.textWrapping = true;
-        walkCred.resizeToFit = true;
+        const name = new TextBlock("name", "姓名：陈炯");
+        name.textWrapping = true;
+        name.resizeToFit = true;
 
-        const gameCred = new TextBlock("gameSong", "Christmas synths by 3xBlast - opengameart.org");
-        gameCred.textWrapping = true;
-        gameCred.resizeToFit = true;
+        const studentNumber = new TextBlock("studentNumber", "学号：CB18130916");
+        studentNumber.textWrapping = true;
+        studentNumber.resizeToFit = true;
 
-        const pauseCred = new TextBlock("pauseSong", "Music by Matthew Pablo / www.matthewpablo.com - opengameart.org");
-        pauseCred.textWrapping = true;
-        pauseCred.resizeToFit = true;
+        const tearcher = new TextBlock("tearcher", "指导老师：聂鹏");
+        tearcher.textWrapping = true;
+        tearcher.resizeToFit = true;
 
-        const endCred = new TextBlock("startendSong", "copycat by syncopika - opengameart.org");
-        endCred.textWrapping = true;
-        endCred.resizeToFit = true;
+        const gamename = new TextBlock("gamename", "游戏名：LANTERN'S FESTIVAL");
+        gamename.textWrapping = true;
+        gamename.resizeToFit = true;
 
-        const loseCred = new TextBlock("loseSong", "Eye of the Storm by Joth - opengameart.org");
-        loseCred.textWrapping = true;
-        loseCred.resizeToFit = true;
+        // const loseCred = new TextBlock("loseSong", "Eye of the Storm by Joth - opengameart.org");
+        // loseCred.textWrapping = true;
+        // loseCred.resizeToFit = true;
 
-        const fireworksSfx = new TextBlock("fireworks", "rubberduck - opengameart.org")
-        fireworksSfx.textWrapping = true;
-        fireworksSfx.resizeToFit = true;
+        // const fireworksSfx = new TextBlock("fireworks", "rubberduck - opengameart.org")
+        // fireworksSfx.textWrapping = true;
+        // fireworksSfx.resizeToFit = true;
 
-        const dashCred = new TextBlock("dashCred", "Woosh Noise 1 by potentjello - freesound.org");
-        dashCred.textWrapping = true;
-        dashCred.resizeToFit = true;
+        // const dashCred = new TextBlock("dashCred", "Woosh Noise 1 by potentjello - freesound.org");
+        // dashCred.textWrapping = true;
+        // dashCred.resizeToFit = true;
 
-        // 退出，sparkwarning，重置
-        const sfxCred = new TextBlock("sfxCred", "200 Free SFX - https://kronbits.itch.io/freesfx");
-        sfxCred.textWrapping = true;
-        sfxCred.resizeToFit = true;
+        // // 退出，sparkwarning，重置
+        // const sfxCred = new TextBlock("sfxCred", "200 Free SFX - https://kronbits.itch.io/freesfx");
+        // sfxCred.textWrapping = true;
+        // sfxCred.resizeToFit = true;
 
-        // 电灯
-        const sfxCred2 = new TextBlock("sfxCred2", "sound pack by wobbleboxx.com - opengameart.org");
-        sfxCred2.textWrapping = true;
-        sfxCred2.resizeToFit = true;
+        // // 电灯
+        // const sfxCred2 = new TextBlock("sfxCred2", "sound pack by wobbleboxx.com - opengameart.org");
+        // sfxCred2.textWrapping = true;
+        // sfxCred2.resizeToFit = true;
 
-        const selectionSfxCred = new TextBlock("select", "8bit menu select by Fupi - opengameart.org");
-        selectionSfxCred.textWrapping = true;
-        selectionSfxCred.resizeToFit = true;
+        // const selectionSfxCred = new TextBlock("select", "8bit menu select by Fupi - opengameart.org");
+        // selectionSfxCred.textWrapping = true;
+        // selectionSfxCred.resizeToFit = true;
 
-        stackPanel.addControl(music);
-        stackPanel.addControl(source);
-        stackPanel.addControl(jumpCred);
-        stackPanel.addControl(walkCred);
-        stackPanel.addControl(gameCred);
-        stackPanel.addControl(pauseCred);
-        stackPanel.addControl(endCred);
-        stackPanel.addControl(loseCred);
-        stackPanel.addControl(fireworksSfx);
-        stackPanel.addControl(dashCred);
-        stackPanel.addControl(sfxCred);
-        stackPanel.addControl(sfxCred2);
-        stackPanel.addControl(selectionSfxCred);
+        stackPanel.addControl(title);
+        stackPanel.addControl(school);
+        stackPanel.addControl(classes);
+        stackPanel.addControl(name);
+        stackPanel.addControl(studentNumber);
+        stackPanel.addControl(tearcher);
+        stackPanel.addControl(gamename);
+        // stackPanel.addControl(loseCred);
+        // stackPanel.addControl(fireworksSfx);
+        // stackPanel.addControl(dashCred);
+        // stackPanel.addControl(sfxCred);
+        // stackPanel.addControl(sfxCred2);
+        // stackPanel.addControl(selectionSfxCred);
 
         const mainMenu = Button.CreateSimpleButton("mainmenu", "RETURN");
         mainMenu.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -996,7 +996,6 @@ class App {
         this._environment._lanternObjs.forEach(lantern => {
             gl.addIncludedOnlyMesh(lantern.mesh);
         });
-        // 由公众提供的网页
     }
 }
 new App();

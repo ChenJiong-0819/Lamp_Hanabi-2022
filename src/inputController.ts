@@ -87,12 +87,6 @@ export class PlayerInput {
             this.horizontalAxis = 0;
         }
 
-        // 猛冲
-        if ((this.inputMap["Shift"] || this._mobileDash) && !this._ui.gamePaused) {
-            this.dashing = true;
-        } else {
-            this.dashing = false;
-        }
 
         // 跳转检查（空格）
         if ((this.inputMap[" "] || this._mobileJump) && !this._ui.gamePaused) {
